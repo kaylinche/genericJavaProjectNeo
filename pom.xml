@@ -19,7 +19,7 @@
 
     <properties>
         <!-- Properties that hold information on the location, version and plugin of the SAP Cloud Platform SDK for Neo environment -->
-        <sap.cloud.sdk.path>${project.basedir}/../..</sap.cloud.sdk.path>
+        <sap.cloud.sdk.path>${project.build.directory}/sdk</sap.cloud.sdk.path>
         <sap.cloud.sdk.version>1.144.13.1</sap.cloud.sdk.version>
         <sap.cloud.sdk.plugin>neo-java-web-maven-plugin</sap.cloud.sdk.plugin>
 
@@ -36,7 +36,10 @@
 
         <!-- Property that holds the data center host is pre-defined below, but may be overwritten if required, e.g.: -->
         <!-- mvn clean verify -P cloud-integration-tests ... -Dsap.cloud.host=hanatrial.ondemand.com -->
-        <sap.cloud.host>hana.ondemand.com</sap.cloud.host>
+        <sap.cloud.host>${env.SAP_CLOUD_HOST}</sap.cloud.host>
+        <sap.cloud.account>${env.SAP_CLOUD_ACCOUNT}</sap.cloud.account>
+        <sap.cloud.username>${env.SAP_CLOUD_USERNAME}</sap.cloud.username>
+        <sap.cloud.password>${env.SAP_CLOUD_PASSWORD}</sap.cloud.password>
 
         <!-- Property that holds the name of the application under which it will later appear in the cloud -->
         <sap.cloud.application>sample</sap.cloud.application>
@@ -399,6 +402,34 @@
                                     <goal>stop</goal>
                                 </goals>
                             </execution>
+                            <execution>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>install-sdk</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>deploying-application</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run-console-command</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Following console command is used to deploy the application to the QA environment -->
+                                    <consoleCommand>deploy -a ${sap.cloud.account} -b ${sap.cloud.application} -h ${sap.cloud.host} -u ${sap.cloud.username} -p ${sap.cloud.password} -source ${project.build.directory}/${project.artifactId}.war</consoleCommand>			              
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>restart-application</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run-console-command</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- The console command is used to restart the application in order to reflect the changes -->
+                                    <consoleCommand>restart -a ${sap.cloud.account} -b ${sap.cloud.application} -h ${sap.cloud.host} -u ${sap.cloud.username} -p ${sap.cloud.password}</consoleCommand>			              
+                                </configuration>
+                            </execution>
                         </executions>
                         <configuration>
                             <skip>${skipIntegrationTests}</skip>
@@ -596,6 +627,41 @@
                         </plugin>
                     </plugins>
                 </pluginManagement>
+            </build>
+        </profile>
+        <profile>
+            <id>update</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.sap.cloud</groupId>
+                        <artifactId>${sap.cloud.sdk.plugin}</artifactId>
+                        <executions>
+                            <!-- This execution is required to install the SDK -->
+                            <execution>
+                                <phase>initialize</phase>
+                                <goals>
+                                <goal>install-sdk</goal>
+                                </goals>
+                            </execution>
+                            <!-- This execution is used to run the rolling-update command for blue-green deployment -->
+                            <execution>
+                                <id>deploying-application</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run-console-command</goal>
+                                </goals>
+                                <configuration>
+                                    <consoleCommand>rolling-update -a ${sap.cloud.account} -b ${sap.cloud.application} -h ${sap.cloud.host} -u ${sap.cloud.username} -p ${sap.cloud.password} -source ${project.build.directory}/${project.artifactId}.war</consoleCommand>                 
+                                </configuration>
+                                </execution>
+                        </executions>
+                        <configuration>
+                            <skip>${skipIntegrationTests}</skip>
+                            <sdkInstallPath>${sap.cloud.sdk.path}</sdkInstallPath>
+                        </configuration>
+                    </plugin>
+                </plugins>
             </build>
         </profile>
     </profiles>
